@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Google Flow Prompt Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background-color: #09090b;
+      color: #f4f4f5;
+    }
+    .chip-btn {
+      transition: all 0.15s ease;
+    }
+    .chip-btn.active {
+      background-color: rgba(245, 158, 11, 0.18);
+      border-color: #f59e0b;
+      color: #fcd34d;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #18181b;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #3f3f46;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-zinc-950 text-zinc-100 antialiased selection:bg-amber-500/30 selection:text-amber-200">
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 hidden items-center gap-2 rounded-xl border border-zinc-700 bg-zinc-900/95 px-4 py-2.5 text-sm font-medium text-zinc-100 shadow-2xl backdrop-blur">
+    <i data-lucide="check-circle-2" class="h-4 w-4 text-amber-400"></i>
+    <span id="toast-msg">Copied to clipboard</span>
+  </div>
+
+  <!-- Top Navigation -->
+  <header class="sticky top-0 z-30 border-b border-zinc-800/80 bg-zinc-950/90 backdrop-blur-md">
+    <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
+      <div class="flex items-center gap-3">
+        <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 text-zinc-950 shadow-lg shadow-amber-500/20">
+          <i data-lucide="clapperboard" class="h-5 w-5"></i>
+        </div>
+        <div>
+          <h1 class="text-base font-semibold tracking-tight text-white sm:text-lg">Google Flow Prompt Studio</h1>
+          <p class="text-xs text-zinc-400">Structured Veo 3.1 &amp; Flow shot builder</p>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <select id="preset-select" aria-label="Load preset" class="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs font-medium text-zinc-200 focus:border-amber-500 focus:outline-none">
+          <option value="">Load a Preset...</option>
+          <option value="scifi">Cinematic Sci-Fi Walk</option>
+          <option value="product">Luxury Product Commercial</option>
+          <option value="dialogue">Ingredients Dialogue Scene</option>
+          <option value="drone">Golden Hour Drone Reveal</option>
+          <option value="jumpto">SceneBuilder Jump-To Cut</option>
+        </select>
+        <button id="btn-randomize" type="button" class="inline-flex items-center gap-1.5 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs font-medium text-zinc-200 hover:border-zinc-600 hover:bg-zinc-800">
+          <i data-lucide="sparkles" class="h-3.5 w-3.5 text-amber-400"></i>
+          <span>Inspire Me</span>
+        </button>
+        <button id="btn-reset" type="button" class="inline-flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-1.5 text-xs font-medium text-zinc-400 hover:border-zinc-700 hover:text-zinc-200">
+          <i data-lucide="rotate-ccw" class="h-3.5 w-3.5"></i>
+          <span>Reset</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Flow Mode Tabs -->
+    <div class="mx-auto max-w-7xl px-4 sm:px-6">
+      <nav class="flex gap-1 overflow-x-auto pb-2" aria-label="Flow modes">
+        <button type="button" data-mode="text" class="mode-tab whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition">Text to Video</button>
+        <button type="button" data-mode="ingredients" class="mode-tab whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition">Ingredients to Video</button>
+        <button type="button" data-mode="frames" class="mode-tab whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition">Frames to Video</button>
+        <button type="button" data-mode="scenebuilder" class="mode-tab whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition">SceneBuilder / Edit</button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main class="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 py-6 sm:px-6 lg:grid-cols-12">
+    <!-- Left Column: Builder Controls -->
+    <section class="space-y-5 lg:col-span-7">
+      <!-- Mode Context Banner -->
+      <div id="mode-banner" class="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3.5 text-xs text-zinc-300"></div>
+
+      <!-- Mode-Specific Controls (Ingredients / Frames / SceneBuilder) -->
+      <div id="mode-extra-panel" class="hidden rounded-xl border border-zinc-800 bg-zinc-900/60 p-4 space-y-3"></div>
+
+      <!-- 1. Subject & Action -->
+      <div class="rounded-xl border border-zinc-800 bg-zinc-900/60 p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <h2 class="flex items-center gap-2 text-sm font-semibold text-white">
+            <span class="flex h-5 w-5 items-center justify-center rounded-md bg-amber-500/15 text-[11px] font-bold text-amber-400">1</span>
+            Subject &amp; Action
+          </h2>
+          <span class="text-[11px] text-zinc-500">Core focus</span>
+        </div>
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <label for="input-subject" class="mb-1 block text-xs font-medium text-zinc-400">Subject (Who / What)</label>
+            <input id="input-subject" type="text" placeholder="e.g., A lone astronaut in a weathered white suit" class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-amber-500 focus:outline-none" />
+          </div>
+          <div>
+            <label for="input-action" class="mb-1 block text-xs font-medium text-zinc-400">Action (What happens in 5–8s)</label>
+            <input id="input-action" type="text" placeholder="e.g., walks steadily toward a glowing monolith and reaches out" class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-amber-500 focus:outline-none" />
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Context & Environment -->
+      <div class="rounded-xl border border-zinc-800 bg-zinc-900/60 p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <h2 class="flex items-center gap-2 text-sm font-semibold text-white">
+            <span class="flex h-5 w-5 items-center justify-center rounded-md bg-amber-500/15 text-[11px] font-bold text-amber-400">2</span>
+            Context &amp; Environment
+          </h2>
+          <span class="text-[11px] text-zinc-500">Setting &amp; atmosphere</span>
+        </div>
+        <div>
+          <label for="input-context" class="mb-1 block text-xs font-medium text-zinc-400">Location, background details &amp; weather</label>
+          <input id="input-context" type="text" placeholder="e.g., Rain-slicked neon Tokyo alley at midnight with steam rising from vents" class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-amber-500 focus:outline-none" />
+        </div>
+      </div>
+
+      <!-- 3. Cinematography -->
+      <div class="rounded-xl border border-zinc-800 bg-zinc-900/60 p-4 space-y-4">
+        <div class="flex items-center justify-between">
+          <h2 class="flex items-center gap-2 text-sm font-semibold text-white">
+            <span class="flex h-5 w-5 items-center justify-center rounded-md bg-amber-500/15 text-[11px] font-bold text-amber-400">3</span>
+            Cinematography
+          </h2>
+          <span class="text-[11px] text-zinc-500">Matches Flow camera controls</span>
+        </div>
+
+        <div class="space-y-2">
+          <span class="block text-xs font-medium text-zinc-400">Shot Type</span>
+          <div id="chips-shotType" class="flex flex-wrap gap-1.5"></div>
+        </div>
+
+        <div class="space-y-2">
+          <span class="block text-xs font-medium text-zinc-400">Camera Angle</span>
+          <div id="chips-cameraAngle" class="flex flex-wrap gap-1.5"></div>
+        </div>
+
+        <div class="space-y-2">
+          <span class="block text-xs font-medium text-zinc-400">Camera Movement</span>
+          <div id="chips-cameraMovement" class="flex flex-wrap gap-1.5"></div>
+        </div>
+
+        <div class="space-y-2">
+          <span class="block text-xs font-medium text-zinc-400">Lens &amp; Depth</span>
+          <div id="chips-lens" class="flex flex-wrap gap-1.5"></div>
+        </div>
+      </div>
+
+      <!-- 4. Style, Lighting & Mood -->
+      <div class="rounded-xl border border-zinc-800 bg-zinc-900/60 p-4 space-y-4">
+        <div class="flex items-center justify-between">
+          <h2 class="flex items-center gap-2 text-sm font-semibold text-white">
+            <span class="flex h-5 w-5 items-center justify-center rounded-md bg-amber-500/15 text-[11px] font-bold text-amber-400">4</span>
+            Style, Lighting &amp; Mood
+          </h2>
+        </div>
+
+        <div class="space-y-2">
+          <span class="block text-xs font-medium text-zinc-400">Visual Style</span>
+          <div id="chips-style" class="flex flex-wrap gap-1.5"></div>
+        </div>
+
+        <div class="space-y-2">
+          <span class="block text-xs font-medium text-zinc-400">Lighting</span>
+          <div id="chips-lighting" class="flex flex-wrap gap-1.5"></div>
+        </div>
+
+        <div>
+          <label for="input-mood" class="mb-1 block text-xs font-medium text-zinc-400">Mood &amp; Color Palette (Optional)</label>
+          <input id="input-mood" type="text" placeholder="e.g., Tense, melancholic, teal and amber color grade" class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-amber-500 focus:outline-none" />
+        </div>
+      </div>
+
+      <!-- 5. Audio Cues (Veo 3 / 3.1) -->
+      <div class="rounded-xl border border-zinc-800 bg-zinc-900/60 p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <h2 class="flex items-center gap-2 text-sm font-semibold text-white">
+            <span class="flex h-5 w-5 items-center justify-center rounded-md bg-amber-500/15 text-[11px] font-bold text-amber-400">5</span>
+            Audio Cues
+          </h2>
+          <span class="text-[11px] text-zinc-500">Synchronized sound</span>
+        </div>
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div>
+            <label for="input-dialogue" class="mb-1 block text-xs font-medium text-zinc-400">Dialogue</label>
+            <input id="input-dialogue" type="text" placeholder='e.g., "We are not alone."' class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-amber-500 focus:outline-none" />
+          </div>
+          <div>
+            <label for="input-sfx" class="mb-1 block text-xs font-medium text-zinc-400">Sound Effects (SFX)</label>
+            <input id="input-sfx" type="text" placeholder="e.g., Heavy boots on wet gravel" class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-amber-500 focus:outline-none" />
+          </div>
+          <div>
+            <label for="input-ambient" class="mb-1 block text-xs font-medium text-zinc-400">Ambient Sound</label>
+            <input id="input-ambient" type="text" placeholder="e.g., Distant city hum and soft wind" class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-amber-500 focus:outline-none" />
+          </div>
+        </div>
+      </div>
+
+      <!-- 6. Guardrails -->
+      <div class="rounded-xl border border-zinc-800 bg-zinc-900/60 p-4 space-y-2">
+        <h2 class="flex items-center gap-2 text-sm font-semibold text-white">
+          <span class="flex h-5 w-5 items-center justify-center rounded-md bg-amber-500/15 text-[11px] font-bold text-amber-400">6</span>
+          Cleanliness &amp; Guardrails
+        </h2>
+        <div id="chips-avoid" class="flex flex-wrap gap-1.5"></div>
+      </div>
+    </section>
+
+    <!-- Right Column: Live Output & Saved Library -->
+    <aside class="space-y-5 lg:col-span-5">
+      <div class="sticky top-28 space-y-5">
+        <!-- Output Card -->
+        <div class="rounded-xl border border-zinc-800 bg-zinc-900/80 p-4 shadow-xl space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <i data-lucide="terminal" class="h-4 w-4 text-amber-400"></i>
+              <h2 class="text-sm font-semibold text-white">Generated Flow Prompt</h2>
+            </div>
+            <div class="inline-flex rounded-lg border border-zinc-700 bg-zinc-950 p-0.5 text-xs">
+              <button type="button" data-format="prose" class="format-btn rounded-md px-2.5 py-1 font-medium transition">Natural Prose</button>
+              <button type="button" data-format="structured" class="format-btn rounded-md px-2.5 py-1 font-medium transition">Shot Spec</button>
+            </div>
+          </div>
+
+          <textarea id="prompt-output" rows="7" class="w-full rounded-xl border border-zinc-700/80 bg-zinc-950 p-3.5 text-sm leading-relaxed text-zinc-100 focus:border-amber-500 focus:outline-none" placeholder="Start typing or pick chips on the left to build your Google Flow prompt..."></textarea>
+
+          <!-- Completeness Meter -->
+          <div class="space-y-2 rounded-lg border border-zinc-800 bg-zinc-950/70 p-3">
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-medium text-zinc-300">Prompt Signal Strength</span>
+              <span id="score-label" class="font-semibold text-amber-400">0%</span>
+            </div>
+            <div class="h-2 w-full overflow-hidden rounded-full bg-zinc-800">
+              <div id="score-bar" class="h-full rounded-full bg-gradient-to-r from-amber-500 to-emerald-400 transition-all duration-300" style="width: 0%"></div>
+            </div>
+            <p id="score-tips" class="text-[11px] text-zinc-400"></p>
+          </div>
+
+          <!-- Primary Actions -->
+          <div class="flex flex-wrap gap-2">
+            <button id="btn-copy" type="button" class="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-semibold text-zinc-950 hover:bg-amber-400 transition">
+              <i data-lucide="copy" class="h-4 w-4"></i>
+              <span>Copy Prompt</span>
+            </button>
+            <button id="btn-save" type="button" class="inline-flex items-center justify-center gap-2 rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-2.5 text-sm font-medium text-zinc-100 hover:bg-zinc-700 transition">
+              <i data-lucide="bookmark-plus" class="h-4 w-4 text-amber-400"></i>
+              <span>Save</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Saved Library -->
+        <div class="rounded-xl border border-zinc-800 bg-zinc-900/60 p-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <h3 class="flex items-center gap-2 text-sm font-semibold text-white">
+              <i data-lucide="folder-heart" class="h-4 w-4 text-amber-400"></i>
+              <span>Saved Prompt Library</span>
+              <span id="library-count" class="rounded-full bg-zinc-800 px-2 py-0.5 text-[11px] text-zinc-400">0</span>
+            </h3>
+            <div class="flex items-center gap-1.5">
+              <button id="btn-export-txt" type="button" class="rounded-lg border border-zinc-700 bg-zinc-950 px-2.5 py-1 text-[11px] font-medium text-zinc-300 hover:bg-zinc-800">Export .txt</button>
+            </div>
+          </div>
+          <div id="library-list" class="max-h-72 space-y-2 overflow-y-auto pr-1"></div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <script>
+    (function () {
+      const STORAGE_KEY = 'flow_prompt_studio_library_v1';
+
+      const OPTIONS = {
+        shotType: ['Wide Shot', 'Medium Shot', 'Close-Up', 'Extreme Close-Up', 'Establishing Shot', 'Over-the-Shoulder', 'POV Shot'],
+        cameraAngle: ['Eye Level', 'Low Angle', 'High Angle', 'Bird\'s-Eye View', 'Worm\'s-Eye View', 'Dutch Angle'],
+        cameraMovement: ['Static', 'Slow Pan', 'Tilt Up', 'Dolly In', 'Dolly Out', 'Tracking Shot', 'Crane Shot', 'Handheld', 'Orbit', 'Drone Push'],
+        lens: ['24mm Wide-Angle', '35mm Standard', '50mm Prime', '85mm Telephoto', 'Anamorphic', 'Shallow Depth of Field', 'Rack Focus'],
+        style: ['Cinematic Film', 'Documentary', 'Commercial Ad', '3D Animation', 'Film Noir', 'Analog 16mm', 'Photorealistic'],
+        lighting: ['Golden Hour', 'Neon Night', 'Soft Diffused', 'Chiaroscuro', 'Rim Lighting', 'Overcast Natural', 'Studio Key Light'],
+        avoid: ['No on-screen text or watermarks', 'Avoid abrupt morphing or flicker', 'Keep brand-safe and natural motion']
+      };
+
+      const MODE_INFO = {
+        text: 'Text to Video: Describe Cinematography + Subject + Action + Context + Style + Audio in one focused 5–8 second shot.',
+        ingredients: 'Ingredients to Video: Attach up to 3 reference images (Character, Object, Environment) in Flow, then describe how they interact.',
+        frames: 'Frames to Video: Upload a Start Frame and End Frame in Flow, then describe the motion bridging them.',
+        scenebuilder: 'SceneBuilder / Edit: Use Flow\'s SceneBuilder or Agent to Extend a clip, Jump To a new setting, or Add/Remove objects.'
+      };
+
+      const PRESETS = {
+        scifi: {
+          mode: 'text',
+          subject: 'A lone astronaut in a weathered white spacesuit',
+          action: 'walks steadily toward a towering glowing obsidian monolith and slowly raises a gloved hand',
+          context: 'mist-covered black sand desert on an alien moon under twin pale moons',
+          shotType: 'Wide Shot',
+          cameraAngle: 'Low Angle',
+          cameraMovement: 'Tracking Shot',
+          lens: 'Anamorphic',
+          style: 'Cinematic Film',
+          lighting: 'Rim Lighting',
+          mood: 'Awe-inspiring, tense, cool slate blue and warm amber glow',
+          dialogue: '',
+          sfx: 'Crunching black sand underfoot and low resonant hum',
+          ambient: 'Thin whistling wind across the desert',
+          avoid: ['No on-screen text or watermarks', 'Avoid abrupt morphing or flicker']
+        },
+        product: {
+          mode: 'text',
+          subject: 'A matte-black espresso machine with brushed brass accents',
+          action: 'brews a rich crema espresso shot into a clear double-walled glass cup as steam curls upward',
+          context: 'minimalist marble kitchen counter at sunrise',
+          shotType: 'Close-Up',
+          cameraAngle: 'Eye Level',
+          cameraMovement: 'Dolly In',
+          lens: '85mm Telephoto',
+          style: 'Commercial Ad',
+          lighting: 'Golden Hour',
+          mood: 'Warm, tactile, luxury editorial aesthetic',
+          dialogue: '',
+          sfx: 'Rich espresso pour and soft steam hiss',
+          ambient: 'Quiet morning kitchen room tone',
+          avoid: ['No on-screen text or watermarks']
+        },
+        dialogue: {
+          mode: 'ingredients',
+          ingredients: ['[Ingredient 1: Detective Maya]', '[Ingredient 2: Vintage Trench Coat]', '[Ingredient 3: Rainy Diner Booth]'],
+          subject: 'Detective Maya',
+          action: 'leans forward over a steaming coffee mug, glances at the window, and speaks calmly',
+          context: 'dimly lit retro diner booth at night with neon reflections on rain-streaked glass',
+          shotType: 'Over-the-Shoulder',
+          cameraAngle: 'Eye Level',
+          cameraMovement: 'Static',
+          lens: '50mm Prime',
+          style: 'Film Noir',
+          lighting: 'Neon Night',
+          mood: 'Moody, suspenseful, deep shadows with warm practicals',
+          dialogue: '"We only get one shot before the train leaves."',
+          sfx: 'Ceramic mug clink on the table',
+          ambient: 'Soft rain tapping on glass and distant diner murmur',
+          avoid: ['No on-screen text or watermarks', 'Keep brand-safe and natural motion']
+        },
+        drone: {
+          mode: 'text',
+          subject: 'A winding coastal highway hugging dramatic sea cliffs',
+          action: 'a vintage silver convertible cruises smoothly along the cliffside curve',
+          context: 'rugged Big Sur coastline with crashing turquoise waves and drifting sea mist',
+          shotType: 'Establishing Shot',
+          cameraAngle: 'Bird\'s-Eye View',
+          cameraMovement: 'Drone Push',
+          lens: '24mm Wide-Angle',
+          style: 'Photorealistic',
+          lighting: 'Golden Hour',
+          mood: 'Expansive, exhilarating, warm sunlit highlights',
+          dialogue: '',
+          sfx: 'Soft coastal engine purr',
+          ambient: 'Ocean surf crashing below and gentle breeze',
+          avoid: ['No on-screen text or watermarks']
+        },
+        jumpto: {
+          mode: 'scenebuilder',
+          sceneAction: 'Jump To New Setting',
+          subject: 'The same cyclist from the previous clip',
+          action: 'emerges seamlessly from a sunlit forest trail onto a bustling cobblestone European plaza',
+          context: 'historic sunlit square with cafe umbrellas and pigeons taking flight',
+          shotType: 'Medium Shot',
+          cameraAngle: 'Eye Level',
+          cameraMovement: 'Tracking Shot',
+          lens: '35mm Standard',
+          style: 'Cinematic Film',
+          lighting: 'Soft Diffused',
+          mood: 'Energetic, seamless continuity, vibrant natural colors',
+          dialogue: '',
+          sfx: 'Bicycle freewheel clicking and pigeon wings fluttering',
+          ambient: 'Lively outdoor cafe chatter',
+          avoid: ['Avoid abrupt morphing or flicker']
+        }
+      };
+
+      const state = {
+        mode: 'text',
+        format: 'prose',
+        subject: '',
+        action: '',
+        context: '',
+        shotType: 'Medium Shot',
+        cameraAngle: 'Eye Level',
+        cameraMovement: 'Dolly In',
+        lens: '35mm Standard',
+        style: 'Cinematic Film',
+        lighting: 'Golden Hour',
+        mood: '',
+        dialogue: '',
+        sfx: '',
+        ambient: '',
+        ingredients: ['Character reference', 'Object reference', ''],
+        frameNote: 'Smooth continuous motion from start frame to end frame',
+        sceneAction: 'Extend Scene',
+        avoid: ['No on-screen text or watermarks'],
+        manualOverride: false,
+        library: []
+      };
+
+      const els = {
+        toast: document.getElementById('toast'),
+        toastMsg: document.getElementById('toast-msg'),
+        presetSelect: document.getElementById('preset-select'),
+        btnRandomize: document.getElementById('btn-randomize'),
+        btnReset: document.getElementById('btn-reset'),
+        modeBanner: document.getElementById('mode-banner'),
+        modeExtraPanel: document.getElementById('mode-extra-panel'),
+        inputSubject: document.getElementById('input-subject'),
+        inputAction: document.getElementById('input-action'),
+        inputContext: document.getElementById('input-context'),
+        inputMood: document.getElementById('input-mood'),
+        inputDialogue: document.getElementById('input-dialogue'),
+        inputSfx: document.getElementById('input-sfx'),
+        inputAmbient: document.getElementById('input-ambient'),
+        promptOutput: document.getElementById('prompt-output'),
+        scoreLabel: document.getElementById('score-label'),
+        scoreBar: document.getElementById('score-bar'),
+        scoreTips: document.getElementById('score-tips'),
+        btnCopy: document.getElementById('btn-copy'),
+        btnSave: document.getElementById('btn-save'),
+        libraryList: document.getElementById('library-list'),
+        libraryCount: document.getElementById('library-count'),
+        btnExportTxt: document.getElementById('btn-export-txt')
+      };
+
+      let toastTimer = null;
+      function showToast(msg) {
+        els.toastMsg.textContent = msg;
+        els.toast.classList.remove('hidden');
+        els.toast.classList.add('flex');
+        if (toastTimer) clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => {
+          els.toast.classList.add('hidden');
+          els.toast.classList.remove('flex');
+        }, 2200);
+      }
+
+      function loadLibrary() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (raw) state.library = JSON.parse(raw);
+        } catch (e) {
+          state.library = [];
+        }
+      }
+
+      function persistLibrary() {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state.library));
+        } catch (e) {
+          // Ignore storage quota / sandbox restrictions
+        }
+      }
+
+      function renderChipGroup(containerId, items, stateKey, multi = false) {
+        const container = document.getElementById(containerId);
+        container.innerHTML = '';
+        items.forEach((item) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          const isActive = multi ? state[stateKey].includes(item) : state[stateKey] === item;
+          btn.className = `chip-btn rounded-lg border px-2.5 py-1 text-xs font-medium ${
+            isActive
+              ? 'active border-amber-500 bg-amber-500/20 text-amber-300'
+              : 'border-zinc-700/80 bg-zinc-950 text-zinc-300 hover:border-zinc-600 hover:text-white'
+          }`;
+          btn.textContent = item;
+          btn.addEventListener('click', () => {
+            state.manualOverride = false;
+            if (multi) {
+              if (state[stateKey].includes(item)) {
+                state[stateKey] = state[stateKey].filter((v) => v !== item);
+              } else {
+                state[stateKey] = [...state[stateKey], item];
+              }
+            } else {
+              state[stateKey] = state[stateKey] === item ? '' : item;
+            }
+            renderAll();
+          });
+          container.appendChild(btn);
+        });
+      }
+
+      function renderModeExtra() {
+        const panel = els.modeExtraPanel;
+        if (state.mode === 'text') {
+          panel.classList.add('hidden');
+          panel.innerHTML = '';
+          return;
+        }
+        panel.classList.remove('hidden');
+
+        if (state.mode === 'ingredients') {
+          panel.innerHTML = `
+            <div class="flex items-center justify-between">
+              <h3 class="text-xs font-semibold uppercase tracking-wider text-amber-400">Ingredients to Video (Up to 3 References)</h3>
+            </div>
+            <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              ${[0, 1, 2].map((idx) => `
+                <input data-ing-idx="${idx}" type="text" value="${escapeHtml(state.ingredients[idx] || '')}" placeholder="Ingredient ${idx + 1} (e.g., Character)" class="ing-input rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs text-zinc-100 placeholder-zinc-600 focus:border-amber-500 focus:outline-none" />
+              `).join('')}
+            </div>
+          `;
+          panel.querySelectorAll('.ing-input').forEach((inp) => {
+            inp.addEventListener('input', (e) => {
+              const i = Number(e.target.getAttribute('data-ing-idx'));
+              state.ingredients[i] = e.target.value;
+              state.manualOverride = false;
+              updatePromptAndScore();
+            });
+          });
+        } else if (state.mode === 'frames') {
+          panel.innerHTML = `
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-amber-400">Frames to Video Transition</h3>
+            <input id="input-frame-note" type="text" value="${escapeHtml(state.frameNote)}" placeholder="Describe how the Start Frame transitions into the End Frame..." class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs text-zinc-100 placeholder-zinc-600 focus:border-amber-500 focus:outline-none" />
+          `;
+          document.getElementById('input-frame-note').addEventListener('input', (e) => {
+            state.frameNote = e.target.value;
+            state.manualOverride = false;
+            updatePromptAndScore();
+          });
+        } else if (state.mode === 'scenebuilder') {
+          const actions = ['Extend Scene', 'Jump To New Setting', 'Add / Remove Object', 'Agent Style Edit'];
+          panel.innerHTML = `
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-amber-400">SceneBuilder / Edit Operation</h3>
+            <div class="flex flex-wrap gap-1.5">
+              ${actions.map((act) => `
+                <button type="button" data-scene-act="${act}" class="scene-act-btn rounded-lg border px-2.5 py-1 text-xs font-medium ${
+                  state.sceneAction === act
+                    ? 'border-amber-500 bg-amber-500/20 text-amber-300'
+                    : 'border-zinc-700 bg-zinc-950 text-zinc-300 hover:border-zinc-600'
+                }">${act}</button>
+              `).join('')}
+            </div>
+          `;
+          panel.querySelectorAll('.scene-act-btn').forEach((btn) => {
+            btn.addEventListener('click', () => {
+              state.sceneAction = btn.getAttribute('data-scene-act');
+              state.manualOverride = false;
+              renderAll();
+            });
+          });
+        }
+      }
+
+      function escapeHtml(str) {
+        return String(str || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      function buildPromptText() {
+        const cineParts = [state.shotType, state.cameraAngle, state.cameraMovement, state.lens].filter(Boolean);
+        const cineStr = cineParts.join(', ');
+        const styleParts = [state.style, state.lighting, state.mood].filter(Boolean);
+        const styleStr = styleParts.join(', ');
+        const audioParts = [];
+        if (state.dialogue.trim()) audioParts.push(`Dialogue: ${state.dialogue.trim()}`);
+        if (state.sfx.trim()) audioParts.push(`SFX: ${state.sfx.trim()}`);
+        if (state.ambient.trim()) audioParts.push(`Ambient: ${state.ambient.trim()}`);
+
+        const activeIngredients = state.ingredients.map((s) => s.trim()).filter(Boolean);
+
+        if (state.format === 'structured') {
+          const lines = [];
+          lines.push(`[MODE]: ${state.mode.toUpperCase()}${state.mode === 'scenebuilder' ? ` (${state.sceneAction})` : ''}`);
+          if (state.mode === 'ingredients' && activeIngredients.length) {
+            lines.push(`[INGREDIENTS]: ${activeIngredients.join(' | ')}`);
+          }
+          if (state.mode === 'frames' && state.frameNote.trim()) {
+            lines.push(`[TRANSITION]: ${state.frameNote.trim()}`);
+          }
+          if (cineStr) lines.push(`[CINEMATOGRAPHY]: ${cineStr}`);
+          if (state.subject.trim()) lines.push(`[SUBJECT]: ${state.subject.trim()}`);
+          if (state.action.trim()) lines.push(`[ACTION]: ${state.action.trim()}`);
+          if (state.context.trim()) lines.push(`[CONTEXT]: ${state.context.trim()}`);
+          if (styleStr) lines.push(`[STYLE & LIGHTING]: ${styleStr}`);
+          if (audioParts.length) lines.push(`[AUDIO]: ${audioParts.join(' | ')}`);
+          if (state.avoid.length) lines.push(`[CONSTRAINTS]: ${state.avoid.join('; ')}`);
+          return lines.join('\n');
+        }
+
+        // Natural Prose Format
+        const sentences = [];
+        if (state.mode === 'ingredients' && activeIngredients.length) {
+          sentences.push(`Using reference ingredients (${activeIngredients.join(', ')}),`);
+        } else if (state.mode === 'frames' && state.frameNote.trim()) {
+          sentences.push(`Transitioning from the start frame to the end frame (${state.frameNote.trim()}),`);
+        } else if (state.mode === 'scenebuilder') {
+          sentences.push(`[${state.sceneAction}]`);
+        }
+
+        const coreShot = [];
+        if (cineStr) coreShot.push(`${cineStr} of`);
+        if (state.subject.trim()) coreShot.push(state.subject.trim());
+        if (state.action.trim()) coreShot.push(state.action.trim());
+        if (state.context.trim()) coreShot.push(`set in ${state.context.trim()}`);
+
+        if (coreShot.length) {
+          sentences.push(coreShot.join(' ') + '.');
+        }
+        if (styleStr) {
+          sentences.push(`Visual style and atmosphere: ${styleStr}.`);
+        }
+        if (audioParts.length) {
+          sentences.push(`Audio: ${audioParts.join('; ')}.`);
+        }
+        if (state.avoid.length) {
+          sentences.push(`Constraints: ${state.avoid.join(', ')}.`);
+        }
+        return sentences.join(' ').replace(/\s+/g, ' ').trim();
+      }
+
+      function computeScore() {
+        let score = 0;
+        const missing = [];
+        if (state.subject.trim()) score += 25; else missing.push('Subject');
+        if (state.action.trim()) score += 25; else missing.push('Action');
+        if (state.context.trim()) score += 15; else missing.push('Context');
+        if (state.shotType || state.cameraMovement || state.cameraAngle) score += 15; else missing.push('Camera');
+        if (state.style || state.lighting) score += 10; else missing.push('Style/Lighting');
+        if (state.dialogue.trim() || state.sfx.trim() || state.ambient.trim()) score += 10; else missing.push('Audio cues');
+        return { score, missing };
+      }
+
+      function updatePromptAndScore() {
+        if (!state.manualOverride) {
+          els.promptOutput.value = buildPromptText();
+        }
+        const { score, missing } = computeScore();
+        els.scoreLabel.textContent = `${score}%`;
+        els.scoreBar.style.width = `${score}%`;
+        if (missing.length === 0) {
+          els.scoreTips.textContent = 'All core Veo 3.1 / Flow elements covered. Ready to generate!';
+        } else {
+          els.scoreTips.textContent = `Add ${missing.join(', ')} to boost prompt precision.`;
+        }
+      }
+
+      function renderLibrary() {
+        els.libraryCount.textContent = String(state.library.length);
+        if (state.library.length === 0) {
+          els.libraryList.innerHTML = '<p class="rounded-lg border border-dashed border-zinc-800 p-4 text-center text-xs text-zinc-500">No saved prompts yet. Build a shot and click Save.</p>';
+          return;
+        }
+        els.libraryList.innerHTML = '';
+        state.library.forEach((item) => {
+          const card = document.createElement('div');
+          card.className = 'rounded-lg border border-zinc-800 bg-zinc-950/80 p-3 space-y-2';
+          card.innerHTML = `
+            <div class="flex items-start justify-between gap-2">
+              <div>
+                <p class="text-xs font-semibold text-zinc-200">${escapeHtml(item.title)}</p>
+                <span class="inline-block rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-amber-400">${escapeHtml(item.mode)}</span>
+              </div>
+              <div class="flex items-center gap-1">
+                <button type="button" data-action="load" class="rounded px-2 py-1 text-[11px] font-medium text-zinc-300 hover:bg-zinc-800">Load</button>
+                <button type="button" data-action="copy" class="rounded px-2 py-1 text-[11px] font-medium text-amber-400 hover:bg-zinc-800">Copy</button>
+                <button type="button" data-action="delete" class="rounded px-2 py-1 text-[11px] font-medium text-rose-400 hover:bg-zinc-800">Del</button>
+              </div>
+            </div>
+            <p class="line-clamp-2 text-[11px] text-zinc-400">${escapeHtml(item.prompt)}</p>
+          `;
+          card.querySelector('[data-action="load"]').addEventListener('click', () => {
+            Object.assign(state, item.snapshot);
+            state.manualOverride = false;
+            syncInputsFromState();
+            renderAll();
+            showToast('Loaded prompt from library');
+          });
+          card.querySelector('[data-action="copy"]').addEventListener('click', () => {
+            copyText(item.prompt);
+          });
+          card.querySelector('[data-action="delete"]').addEventListener('click', () => {
+            state.library = state.library.filter((x) => x.id !== item.id);
+            persistLibrary();
+            renderLibrary();
+            showToast('Deleted from library');
+          });
+          els.libraryList.appendChild(card);
+        });
+      }
+
+      function syncInputsFromState() {
+        els.inputSubject.value = state.subject;
+        els.inputAction.value = state.action;
+        els.inputContext.value = state.context;
+        els.inputMood.value = state.mood;
+        els.inputDialogue.value = state.dialogue;
+        els.inputSfx.value = state.sfx;
+        els.inputAmbient.value = state.ambient;
+      }
+
+      function renderAll() {
+        document.querySelectorAll('.mode-tab').forEach((tab) => {
+          const active = tab.getAttribute('data-mode') === state.mode;
+          tab.className = `mode-tab whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+            active ? 'bg-amber-500 text-zinc-950 font-semibold' : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
+          }`;
+        });
+
+        document.querySelectorAll('.format-btn').forEach((btn) => {
+          const active = btn.getAttribute('data-format') === state.format;
+          btn.className = `format-btn rounded-md px-2.5 py-1 font-medium transition ${
+            active ? 'bg-zinc-800 text-amber-300' : 'text-zinc-400 hover:text-zinc-200'
+          }`;
+        });
+
+        els.modeBanner.textContent = MODE_INFO[state.mode];
+        renderModeExtra();
+
+        renderChipGroup('chips-shotType', OPTIONS.shotType, 'shotType');
+        renderChipGroup('chips-cameraAngle', OPTIONS.cameraAngle, 'cameraAngle');
+        renderChipGroup('chips-cameraMovement', OPTIONS.cameraMovement, 'cameraMovement');
+        renderChipGroup('chips-lens', OPTIONS.lens, 'lens');
+        renderChipGroup('chips-style', OPTIONS.style, 'style');
+        renderChipGroup('chips-lighting', OPTIONS.lighting, 'lighting');
+        renderChipGroup('chips-avoid', OPTIONS.avoid, 'avoid', true);
+
+        updatePromptAndScore();
+        renderLibrary();
+      }
+
+      function copyText(text) {
+        if (!text.trim()) {
+          showToast('Prompt is empty');
+          return;
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(() => {
+            showToast('Prompt copied to clipboard');
+          }).catch(() => fallbackCopy(text));
+        } else {
+          fallbackCopy(text);
+        }
+      }
+
+      function fallbackCopy(text) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+          document.execCommand('copy');
+          showToast('Prompt copied to clipboard');
+        } catch (e) {
+          showToast('Select and copy manually');
+        }
+        document.body.removeChild(ta);
+      }
+
+      // Event Listeners
+      document.querySelectorAll('.mode-tab').forEach((tab) => {
+        tab.addEventListener('click', () => {
+          state.mode = tab.getAttribute('data-mode');
+          state.manualOverride = false;
+          renderAll();
+        });
+      });
+
+      document.querySelectorAll('.format-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          state.format = btn.getAttribute('data-format');
+          state.manualOverride = false;
+          renderAll();
+        });
+      });
+
+      [
+        [els.inputSubject, 'subject'],
+        [els.inputAction, 'action'],
+        [els.inputContext, 'context'],
+        [els.inputMood, 'mood'],
+        [els.inputDialogue, 'dialogue'],
+        [els.inputSfx, 'sfx'],
+        [els.inputAmbient, 'ambient']
+      ].forEach(([el, key]) => {
+        el.addEventListener('input', (e) => {
+          state[key] = e.target.value;
+          state.manualOverride = false;
+          updatePromptAndScore();
+        });
+      });
+
+      els.promptOutput.addEventListener('input', () => {
+        state.manualOverride = true;
+      });
+
+      els.presetSelect.addEventListener('change', (e) => {
+        const key = e.target.value;
+        if (!key || !PRESETS[key]) return;
+        Object.assign(state, JSON.parse(JSON.stringify(PRESETS[key])));
+        state.manualOverride = false;
+        syncInputsFromState();
+        renderAll();
+        showToast('Preset loaded');
+      });
+
+      els.btnRandomize.addEventListener('click', () => {
+        const keys = Object.keys(PRESETS);
+        const pick = keys[Math.floor(Math.random() * keys.length)];
+        Object.assign(state, JSON.parse(JSON.stringify(PRESETS[pick])));
+        state.manualOverride = false;
+        els.presetSelect.value = pick;
+        syncInputsFromState();
+        renderAll();
+        showToast('Loaded random shot idea');
+      });
+
+      els.btnReset.addEventListener('click', () => {
+        state.mode = 'text';
+        state.subject = '';
+        state.action = '';
+        state.context = '';
+        state.mood = '';
+        state.dialogue = '';
+        state.sfx = '';
+        state.ambient = '';
+        state.shotType = 'Medium Shot';
+        state.cameraAngle = 'Eye Level';
+        state.cameraMovement = 'Dolly In';
+        state.lens = '35mm Standard';
+        state.style = 'Cinematic Film';
+        state.lighting = 'Golden Hour';
+        state.avoid = ['No on-screen text or watermarks'];
+        state.manualOverride = false;
+        els.presetSelect.value = '';
+        syncInputsFromState();
+        renderAll();
+        showToast('Reset builder');
+      });
+
+      els.btnCopy.addEventListener('click', () => {
+        copyText(els.promptOutput.value);
+      });
+
+      els.btnSave.addEventListener('click', () => {
+        const promptText = els.promptOutput.value.trim();
+        if (!promptText) {
+          showToast('Add some details before saving');
+          return;
+        }
+        const title = state.subject.trim() || 'Untitled Flow Shot';
+        const snapshot = JSON.parse(JSON.stringify({
+          mode: state.mode,
+          format: state.format,
+          subject: state.subject,
+          action: state.action,
+          context: state.context,
+          shotType: state.shotType,
+          cameraAngle: state.cameraAngle,
+          cameraMovement: state.cameraMovement,
+          lens: state.lens,
+          style: state.style,
+          lighting: state.lighting,
+          mood: state.mood,
+          dialogue: state.dialogue,
+          sfx: state.sfx,
+          ambient: state.ambient,
+          ingredients: state.ingredients,
+          frameNote: state.frameNote,
+          sceneAction: state.sceneAction,
+          avoid: state.avoid
+        }));
+        state.library.unshift({
+          id: String(Date.now()),
+          title: title.slice(0, 48),
+          mode: state.mode,
+          prompt: promptText,
+          snapshot
+        });
+        persistLibrary();
+        renderLibrary();
+        showToast('Saved to library');
+      });
+
+      els.btnExportTxt.addEventListener('click', () => {
+        if (state.library.length === 0) {
+          showToast('Library is empty');
+          return;
+        }
+        const content = state.library.map((item, i) => `# ${i + 1}. ${item.title} [${item.mode}]\n${item.prompt}`).join('\n\n---\n\n');
+        const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'google-flow-prompts.txt';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast('Exported library as .txt');
+      });
+
+      // Initialize with a rich starting preset so the studio opens ready to test
+      loadLibrary();
+      Object.assign(state, JSON.parse(JSON.stringify(PRESETS.scifi)));
+      syncInputsFromState();
+      renderAll();
+      if (window.lucide) {
+        window.lucide.createIcons();
+      }
+    })();
+  </script>
+</body>
+</html>
