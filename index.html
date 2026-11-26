@@ -85,6 +85,10 @@
           <i data-lucide="rotate-ccw" class="h-3.5 w-3.5"></i>
           <span>Reset</span>
         </button>
+        <button id="btn-gemini-settings" type="button" class="inline-flex items-center gap-1.5 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs font-medium text-zinc-200 hover:border-amber-500/60 hover:bg-zinc-800">
+          <span id="gemini-status-dot" class="h-2 w-2 rounded-full bg-amber-400"></span>
+          <span>Gemini API</span>
+        </button>
       </div>
     </div>
 
@@ -108,6 +112,24 @@
 
       <!-- Mode-Specific Controls (Ingredients / Frames / SceneBuilder) -->
       <div id="mode-extra-panel" class="hidden rounded-xl border border-zinc-800 bg-zinc-900/60 p-4 space-y-3"></div>
+
+      <!-- Gemini Quick-Start -->
+      <div class="rounded-xl border border-indigo-500/30 bg-gradient-to-r from-indigo-950/40 via-zinc-900/70 to-zinc-900/70 p-4 space-y-2.5">
+        <div class="flex items-center justify-between gap-2">
+          <h2 class="flex items-center gap-2 text-sm font-semibold text-white">
+            <i data-lucide="wand-2" class="h-4 w-4 text-indigo-400"></i>
+            <span>Generate Shot with Gemini</span>
+          </h2>
+          <span class="text-[11px] text-indigo-300/80">Auto-fills all fields</span>
+        </div>
+        <div class="flex flex-col gap-2 sm:flex-row">
+          <input id="input-gemini-idea" type="text" placeholder="Type a rough idea (e.g., cyberpunk street food vendor in the rain)" class="flex-1 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:border-indigo-400 focus:outline-none" />
+          <button id="btn-gemini-generate" type="button" class="inline-flex items-center justify-center gap-1.5 rounded-lg bg-indigo-500 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-400 transition whitespace-nowrap">
+            <i data-lucide="sparkles" class="h-3.5 w-3.5"></i>
+            <span>Build with Gemini</span>
+          </button>
+        </div>
+      </div>
 
       <!-- 1. Subject & Action -->
       <div class="rounded-xl border border-zinc-800 bg-zinc-900/60 p-4 space-y-3">
@@ -268,6 +290,10 @@
 
           <!-- Primary Actions -->
           <div class="flex flex-wrap gap-2">
+            <button id="btn-gemini-polish" type="button" class="inline-flex items-center justify-center gap-1.5 rounded-xl border border-indigo-500/40 bg-indigo-500/15 px-3.5 py-2.5 text-sm font-semibold text-indigo-300 hover:bg-indigo-500/25 transition">
+              <i data-lucide="wand-2" class="h-4 w-4"></i>
+              <span>Polish with Gemini</span>
+            </button>
             <button id="btn-copy" type="button" class="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-semibold text-zinc-950 hover:bg-amber-400 transition">
               <i data-lucide="copy" class="h-4 w-4"></i>
               <span>Copy Prompt</span>
@@ -296,6 +322,38 @@
       </div>
     </aside>
   </main>
+
+  <!-- Gemini API Key Modal -->
+  <div id="gemini-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+    <div class="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-900 p-5 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-semibold text-white">Gemini API Settings</h3>
+        <button id="btn-close-gemini-modal" type="button" class="rounded-lg p-1 text-zinc-400 hover:bg-zinc-800 hover:text-white">
+          <i data-lucide="x" class="h-4 w-4"></i>
+        </button>
+      </div>
+      <p class="text-xs leading-relaxed text-zinc-400">
+        Paste your free Gemini API key from Google AI Studio. Your key is stored only in this browser on your device—never in the public GitHub file.
+      </p>
+      <div class="space-y-3">
+        <div>
+          <label for="gemini-api-key-input" class="mb-1 block text-xs font-medium text-zinc-300">Gemini API Key</label>
+          <input id="gemini-api-key-input" type="password" placeholder="AIza..." class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-indigo-400 focus:outline-none" />
+        </div>
+        <div>
+          <label for="gemini-model-select" class="mb-1 block text-xs font-medium text-zinc-300">Model</label>
+          <select id="gemini-model-select" class="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 focus:border-indigo-400 focus:outline-none">
+            <option value="gemini-2.5-flash">Gemini 2.5 Flash (Fast, recommended)</option>
+            <option value="gemini-2.5-pro">Gemini 2.5 Pro (Higher reasoning)</option>
+          </select>
+        </div>
+      </div>
+      <div class="flex items-center justify-between gap-2 pt-1">
+        <button id="btn-clear-gemini-key" type="button" class="rounded-lg border border-zinc-700 px-3 py-2 text-xs font-medium text-rose-400 hover:bg-zinc-800">Clear Key</button>
+        <button id="btn-save-gemini-key" type="button" class="rounded-lg bg-indigo-500 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-400">Save Key</button>
+      </div>
+    </div>
+  </div>
 
   <script>
     (function () {
@@ -937,6 +995,173 @@
       Object.assign(state, JSON.parse(JSON.stringify(PRESETS.scifi)));
       syncInputsFromState();
       renderAll();
+      const GEMINI_KEY_STORAGE = 'flow_prompt_studio_gemini_key_v1';
+      const GEMINI_MODEL_STORAGE = 'flow_prompt_studio_gemini_model_v1';
+      const geminiEls = {
+        btnSettings: document.getElementById('btn-gemini-settings'),
+        statusDot: document.getElementById('gemini-status-dot'),
+        modal: document.getElementById('gemini-modal'),
+        btnCloseModal: document.getElementById('btn-close-gemini-modal'),
+        keyInput: document.getElementById('gemini-api-key-input'),
+        modelSelect: document.getElementById('gemini-model-select'),
+        btnSaveKey: document.getElementById('btn-save-gemini-key'),
+        btnClearKey: document.getElementById('btn-clear-gemini-key'),
+        ideaInput: document.getElementById('input-gemini-idea'),
+        btnGenerate: document.getElementById('btn-gemini-generate'),
+        btnPolish: document.getElementById('btn-gemini-polish')
+      };
+
+      function getGeminiKey() {
+        try { return localStorage.getItem(GEMINI_KEY_STORAGE) || ''; } catch (e) { return ''; }
+      }
+      function getGeminiModel() {
+        try { return localStorage.getItem(GEMINI_MODEL_STORAGE) || 'gemini-2.5-flash'; } catch (e) { return 'gemini-2.5-flash'; }
+      }
+      function refreshGeminiStatus() {
+        const hasKey = Boolean(getGeminiKey().trim());
+        geminiEls.statusDot.className = hasKey ? 'h-2 w-2 rounded-full bg-emerald-400' : 'h-2 w-2 rounded-full bg-amber-400';
+      }
+      function openGeminiModal() {
+        geminiEls.keyInput.value = getGeminiKey();
+        geminiEls.modelSelect.value = getGeminiModel();
+        geminiEls.modal.classList.remove('hidden');
+        geminiEls.modal.classList.add('flex');
+      }
+      function closeGeminiModal() {
+        geminiEls.modal.classList.add('hidden');
+        geminiEls.modal.classList.remove('flex');
+      }
+
+      geminiEls.btnSettings.addEventListener('click', openGeminiModal);
+      geminiEls.btnCloseModal.addEventListener('click', closeGeminiModal);
+      geminiEls.modal.addEventListener('click', (e) => {
+        if (e.target === geminiEls.modal) closeGeminiModal();
+      });
+      geminiEls.btnSaveKey.addEventListener('click', () => {
+        const k = geminiEls.keyInput.value.trim();
+        const m = geminiEls.modelSelect.value;
+        try {
+          if (k) localStorage.setItem(GEMINI_KEY_STORAGE, k);
+          else localStorage.removeItem(GEMINI_KEY_STORAGE);
+          localStorage.setItem(GEMINI_MODEL_STORAGE, m);
+        } catch (e) {}
+        refreshGeminiStatus();
+        closeGeminiModal();
+        showToast(k ? 'Gemini API key saved on device' : 'Gemini API key cleared');
+      });
+      geminiEls.btnClearKey.addEventListener('click', () => {
+        geminiEls.keyInput.value = '';
+        try { localStorage.removeItem(GEMINI_KEY_STORAGE); } catch (e) {}
+        refreshGeminiStatus();
+        closeGeminiModal();
+        showToast('Gemini API key cleared');
+      });
+
+      async function callGemini(promptText, expectJson) {
+        const apiKey = getGeminiKey().trim();
+        if (!apiKey) {
+          openGeminiModal();
+          showToast('Add your Gemini API key first');
+          return null;
+        }
+        const model = getGeminiModel();
+        const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent?key=' + encodeURIComponent(apiKey);
+        const body = {
+          contents: [{ parts: [{ text: promptText }] }],
+          generationConfig: expectJson ? { responseMimeType: 'application/json' } : {}
+        };
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          const msg = (data && data.error && data.error.message) ? data.error.message : 'Gemini request failed';
+          throw new Error(msg);
+        }
+        const text = data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text;
+        if (!text) throw new Error('Empty response from Gemini');
+        return text;
+      }
+
+      geminiEls.btnGenerate.addEventListener('click', async () => {
+        const idea = geminiEls.ideaInput.value.trim();
+        if (!idea) {
+          showToast('Type a shot idea first');
+          return;
+        }
+        const origHtml = geminiEls.btnGenerate.innerHTML;
+        geminiEls.btnGenerate.disabled = true;
+        geminiEls.btnGenerate.textContent = 'Generating...';
+        try {
+          const instruction = `You are a Google Flow & Veo 3.1 cinematographer. Convert this rough video idea into a structured 5-8 second shot JSON object.
+Idea: "${idea}"
+Flow Mode: "${state.mode}"
+Return ONLY valid JSON with these exact keys:
+- subject (string)
+- action (string)
+- context (string)
+- shotType (pick one of: ${OPTIONS.shotType.join(', ')})
+- cameraAngle (pick one of: ${OPTIONS.cameraAngle.join(', ')})
+- cameraMovement (pick one of: ${OPTIONS.cameraMovement.join(', ')})
+- lens (pick one of: ${OPTIONS.lens.join(', ')})
+- style (pick one of: ${OPTIONS.style.join(', ')})
+- lighting (pick one of: ${OPTIONS.lighting.join(', ')})
+- mood (string)
+- dialogue (string, empty if none)
+- sfx (string)
+- ambient (string)`;
+          const raw = await callGemini(instruction, true);
+          if (!raw) return;
+          const parsed = JSON.parse(raw);
+          ['subject', 'action', 'context', 'mood', 'dialogue', 'sfx', 'ambient'].forEach((k) => {
+            if (typeof parsed[k] === 'string') state[k] = parsed[k];
+          });
+          ['shotType', 'cameraAngle', 'cameraMovement', 'lens', 'style', 'lighting'].forEach((k) => {
+            if (parsed[k] && OPTIONS[k].includes(parsed[k])) state[k] = parsed[k];
+          });
+          state.manualOverride = false;
+          syncInputsFromState();
+          renderAll();
+          showToast('Shot generated with Gemini');
+        } catch (err) {
+          showToast('Gemini error: ' + (err.message || 'Check API key'));
+        } finally {
+          geminiEls.btnGenerate.disabled = false;
+          geminiEls.btnGenerate.innerHTML = origHtml;
+          if (window.lucide) window.lucide.createIcons();
+        }
+      });
+
+      geminiEls.btnPolish.addEventListener('click', async () => {
+        const base = els.promptOutput.value.trim();
+        if (!base) {
+          showToast('Add shot details first');
+          return;
+        }
+        const origHtml = geminiEls.btnPolish.innerHTML;
+        geminiEls.btnPolish.disabled = true;
+        geminiEls.btnPolish.textContent = 'Polishing...';
+        try {
+          const instruction = `Rewrite and polish this Google Flow (${state.mode}) Veo 3.1 prompt for a single 5-8 second cinematic clip. Keep all camera, lighting, subject, action, and audio details, and output ONLY the final prompt text with no quotes or markdown:
+
+${base}`;
+          const polished = await callGemini(instruction, false);
+          if (!polished) return;
+          state.manualOverride = true;
+          els.promptOutput.value = polished.trim();
+          showToast('Prompt polished with Gemini');
+        } catch (err) {
+          showToast('Gemini error: ' + (err.message || 'Check API key'));
+        } finally {
+          geminiEls.btnPolish.disabled = false;
+          geminiEls.btnPolish.innerHTML = origHtml;
+          if (window.lucide) window.lucide.createIcons();
+        }
+      });
+
+      refreshGeminiStatus();
       if (window.lucide) {
         window.lucide.createIcons();
       }
